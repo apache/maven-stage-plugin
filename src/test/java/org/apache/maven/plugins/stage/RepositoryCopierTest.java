@@ -20,14 +20,16 @@ package org.apache.maven.plugins.stage;
  */
 
 import org.codehaus.plexus.PlexusTestCase;
-import org.codehaus.plexus.util.FileUtils;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
+import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.wagon.repository.Repository;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.Reader;
-import java.io.FileReader;
+import java.nio.charset.StandardCharsets;
+import java.io.InputStreamReader;
 import java.util.List;
 
 /** @author Jason van Zyl */
@@ -47,9 +49,7 @@ public class RepositoryCopierTest
 
         File targetRepo = new File( getBasedir(), "target/target-repository" );
 
-        System.out.println( "Copying target stage for tests ..." );
-
-        FileUtils.copyDirectoryStructure( targetRepoSource, targetRepo );
+        FileUtils.copyDirectory( targetRepoSource, targetRepo );
 
         File stagingRepo = new File( getBasedir(), "src/test/staging-repository" );
 
@@ -103,28 +103,28 @@ public class RepositoryCopierTest
 
         assertTrue( versionDir.exists() );
 
-        Reader r = new FileReader( new File( basedir, RepositoryCopier.MAVEN_METADATA) );
-
-        Metadata metadata = reader.read( r );
-
-        // Make sure our new versions has been setup as the release.
-        assertEquals( version, metadata.getVersioning().getRelease() );
-
-        assertEquals( "20070327020553", metadata.getVersioning().getLastUpdated() );
-
-        // Make sure we didn't whack old versions.
-        List versions = metadata.getVersioning().getVersions();
-
-        assertTrue( versions.contains( "2.0.1" ) );
-
-        assertTrue( versions.contains( "2.0.2" ) );
-
-        assertTrue( versions.contains( "2.0.3" ) );
-        
-        assertTrue( versions.contains( "2.0.4" ) );
-
-        assertTrue( versions.contains( "2.0.5" ) );
-
-        r.close();
+        File file = new File( basedir, RepositoryCopier.MAVEN_METADATA);
+        try ( Reader r = new InputStreamReader ( new FileInputStream( file ), StandardCharsets.UTF_8 ) )
+        {
+            Metadata metadata = reader.read( r );
+    
+            // Make sure our new version has been setup as the release.
+            assertEquals( version, metadata.getVersioning().getRelease() );
+    
+            assertEquals( "20070327020553", metadata.getVersioning().getLastUpdated() );
+    
+            // Make sure we didn't whack old versions.
+            List<String> versions = metadata.getVersioning().getVersions();
+    
+            assertTrue( versions.contains( "2.0.1" ) );
+    
+            assertTrue( versions.contains( "2.0.2" ) );
+    
+            assertTrue( versions.contains( "2.0.3" ) );
+            
+            assertTrue( versions.contains( "2.0.4" ) );
+    
+            assertTrue( versions.contains( "2.0.5" ) );
+        }
     }
 }
