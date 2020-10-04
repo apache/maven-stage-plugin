@@ -20,16 +20,17 @@ package org.apache.maven.plugins.stage;
  */
 
 import org.codehaus.plexus.PlexusTestCase;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.wagon.repository.Repository;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
-import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.List;
 
 /** @author Jason van Zyl */
@@ -95,7 +96,7 @@ public class RepositoryCopierTest
     }
 
     private void testMavenArtifact( File repo, String artifact )
-        throws Exception
+        throws IOException, XmlPullParserException
     {
         File basedir = new File( repo, "org/apache/maven/" + artifact );
 
@@ -103,8 +104,8 @@ public class RepositoryCopierTest
 
         assertTrue( versionDir.exists() );
 
-        File file = new File( basedir, RepositoryCopier.MAVEN_METADATA);
-        try ( Reader r = new InputStreamReader ( new FileInputStream( file ), StandardCharsets.UTF_8 ) )
+        File file = new File( basedir, RepositoryCopier.MAVEN_METADATA );
+        try ( Reader r = Files.newBufferedReader( file.toPath(), StandardCharsets.UTF_8 ) )
         {
             Metadata metadata = reader.read( r );
     
