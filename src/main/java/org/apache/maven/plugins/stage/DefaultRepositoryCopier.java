@@ -19,6 +19,7 @@ package org.apache.maven.plugins.stage;
  * under the License.
  */
 
+import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.manager.WagonManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.metadata.Metadata;
@@ -26,34 +27,26 @@ import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Writer;
 import org.apache.maven.wagon.CommandExecutor;
 import org.apache.maven.wagon.CommandExecutionException;
-import org.apache.maven.wagon.ConnectionException;
 import org.apache.maven.wagon.ResourceDoesNotExistException;
 import org.apache.maven.wagon.TransferFailedException;
-import org.apache.maven.wagon.UnsupportedProtocolException;
 import org.apache.maven.wagon.Wagon;
 import org.apache.maven.wagon.WagonException;
-import org.apache.maven.wagon.authentication.AuthenticationException;
 import org.apache.maven.wagon.authentication.AuthenticationInfo;
 import org.apache.maven.wagon.authorization.AuthorizationException;
 import org.apache.maven.wagon.repository.Repository;
 import org.codehaus.plexus.logging.LogEnabled;
 import org.codehaus.plexus.logging.Logger;
-import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.IOUtil;
-import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -70,9 +63,9 @@ import java.util.zip.ZipOutputStream;
 public class DefaultRepositoryCopier
     implements LogEnabled, RepositoryCopier
 {
-    private MetadataXpp3Reader reader = new MetadataXpp3Reader();
+    private MetadataXpp3Reader metadataReader = new MetadataXpp3Reader();
 
-    private MetadataXpp3Writer writer = new MetadataXpp3Writer();
+    private MetadataXpp3Writer metadataWriter = new MetadataXpp3Writer();
 
     /** @plexus.requirement */
     private WagonManager wagonManager;
@@ -101,8 +94,7 @@ public class DefaultRepositoryCopier
         File basedir = new File( tempdir, prefix + "-" + version );
 
         FileUtils.deleteDirectory( basedir );
-
-        basedir.mkdirs();
+        Files.createDirectories( basedir.toPath() );
 
         Wagon sourceWagon = wagonManager.getWagon( sourceRepository );
         AuthenticationInfo sourceAuth = wagonManager.getAuthenticationInfo( sourceRepository.getId() );
@@ -111,7 +103,7 @@ public class DefaultRepositoryCopier
 
         logger.info( "Looking for files in the source repository." );
 
-        List<String> files = new ArrayList<String>();
+        List<String> files = new ArrayList<>();
 
         scan( sourceWagon, "", files );
 
@@ -126,8 +118,6 @@ public class DefaultRepositoryCopier
             }
 
             File f = new File( basedir, s );
-
-            FileUtils.mkdir( f.getParentFile().getAbsolutePath() );
 
             logger.info( "Downloading file from the source repository: " + s );
 
@@ -153,8 +143,6 @@ public class DefaultRepositoryCopier
         AuthenticationInfo targetAuth = wagonManager.getAuthenticationInfo( targetRepository.getId() );
 
         targetWagon.connect( targetRepository, targetAuth );
-
-        PrintWriter rw = new PrintWriter( new FileWriter( renameScript ) );
 
         File archive = new File( tempdir, fileName );
 
@@ -193,52 +181,42 @@ public class DefaultRepositoryCopier
             }
         }
 
-        Set moveCommands = new TreeSet();
-
-        // ----------------------------------------------------------------------------
-        // Create the Zip file that we will deploy to the targetRepositoryUrl stage
-        // ----------------------------------------------------------------------------
-
-        logger.info( "Creating zip file." );
-
-        OutputStream os = new FileOutputStream( archive );
-
-        ZipOutputStream zos = new ZipOutputStream( os );
-
-        scanDirectory( basedir, basedir, zos, version, moveCommands );
-
-        // ----------------------------------------------------------------------------
-        // Create the renameScript script. This is as atomic as we can
-        // ----------------------------------------------------------------------------
-
-        logger.info( "Creating rename script." );
-
-        for ( Object moveCommand : moveCommands )
+        Set<String> moveCommands = new TreeSet<>();
+        
+        try ( Writer rw = Files.newBufferedWriter( renameScript.toPath(), StandardCharsets.UTF_8 ) )
         {
-            String s = (String) moveCommand;
+    
+            // ----------------------------------------------------------------------------
+            // Create the Zip file that we will deploy to the targetRepositoryUrl stage
+            // ----------------------------------------------------------------------------
+    
+            logger.info( "Creating zip file." );
+        
+            try ( ZipOutputStream zos = new ZipOutputStream( new FileOutputStream( archive ) ) )
+            {
+                scanDirectory( basedir, basedir, zos, version, moveCommands );
+        
+                // ----------------------------------------------------------------------------
+                // Create the renameScript script. This is as atomic as we can
+                // ----------------------------------------------------------------------------
+        
+                logger.info( "Creating rename script." );
+        
+                for ( String moveCommand : moveCommands )
+                {
+                    rw.write( moveCommand + "\n" );
+                }
+                ZipEntry e = new ZipEntry( renameScript.getName() );
+    
+                zos.putNextEntry( e );
+    
+                Files.copy( renameScript.toPath(), zos );
+            }
 
-            // We use an explicit unix '\n' line-ending here instead of using the println() method.
-            // Using println() will cause files and folders to have a '\r' at the end if the plugin is run on Windows.
-            rw.print( s + "\n" );
+            sourceWagon.disconnect();
         }
 
-        rw.close();
-
-        ZipEntry e = new ZipEntry( renameScript.getName() );
-
-        zos.putNextEntry( e );
-
-        InputStream is = new FileInputStream( renameScript );
-
-        IOUtil.copy( is, zos );
-
-        zos.close();
-        is.close();
-
-        sourceWagon.disconnect();
-
         // Push the Zip to the target system
-
         logger.info( "Uploading zip file to the target repository." );
 
         targetWagon.put( archive, fileName );
@@ -249,32 +227,32 @@ public class DefaultRepositoryCopier
 
         // We use the super quiet option here as all the noise seems to kill/stall the connection
 
-        String command = "unzip -o -qq -d " + targetRepoBaseDirectory + " " + targetRepoBaseDirectory + "/" + fileName;
+        String unzipCommand = "unzip -o -qq -d " + targetRepoBaseDirectory + " " + targetRepoBaseDirectory + "/" + fileName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( command );
+        ( (CommandExecutor) targetWagon ).executeCommand( unzipCommand );
 
         logger.info( "Deleting zip file from the target repository." );
 
-        command = "rm -f " + targetRepoBaseDirectory + "/" + fileName;
+        String rmCommand = "rm -f " + targetRepoBaseDirectory + "/" + fileName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( command );
+        ( (CommandExecutor) targetWagon ).executeCommand( rmCommand );
 
         logger.info( "Running rename script on the target machine." );
 
-        command = "cd " + targetRepoBaseDirectory + "; sh " + renameScriptName;
+        String renameCommand = "cd " + targetRepoBaseDirectory + "; sh " + renameScriptName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( command );
+        ( (CommandExecutor) targetWagon ).executeCommand( renameCommand );
 
         logger.info( "Deleting rename script from the target repository." );
 
-        command = "rm -f " + targetRepoBaseDirectory + "/" + renameScriptName;
+        String deleteCommand = "rm -f " + targetRepoBaseDirectory + "/" + renameScriptName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( command );
+        ( (CommandExecutor) targetWagon ).executeCommand( deleteCommand );
 
         targetWagon.disconnect();
     }
 
-    private void scanDirectory( File basedir, File dir, ZipOutputStream zos, String version, Set moveCommands )
+    private void scanDirectory( File basedir, File dir, ZipOutputStream zos, String version, Set<String> moveCommands )
         throws IOException
     {
         if ( dir == null )
@@ -296,7 +274,7 @@ public class DefaultRepositoryCopier
                 if ( f.getName().endsWith( version ) )
                 {
                     String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
-                    s = StringUtils.replace( s, "\\", "/" );
+                    s = s.replace( "\\", "/" );
 
                     moveCommands.add( "mv " + s + IN_PROCESS_MARKER + " " + s );
                 }
@@ -305,26 +283,22 @@ public class DefaultRepositoryCopier
             }
             else
             {
-                InputStream is = new FileInputStream( f );
-
                 String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
-                s = StringUtils.replace( s, "\\", "/" );
+                s = s.replace( "\\", "/" );
 
                 // We are marking any version directories with the in-process flag so that
-                // anything being unpacked on the target side will not be recogized by Maven
+                // anything being unpacked on the target side will not be recognized by Maven
                 // and so users cannot download partially uploaded files.
 
                 String vtag = "/" + version;
 
-                s = StringUtils.replace( s, vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
+                s = s.replace( vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
 
                 ZipEntry e = new ZipEntry( s );
 
                 zos.putNextEntry( e );
 
-                IOUtil.copy( is, zos );
-
-                is.close();
+                Files.copy( f.toPath(), zos );
 
                 int idx = s.indexOf( IN_PROCESS_MARKER );
 
@@ -342,82 +316,71 @@ public class DefaultRepositoryCopier
         throws IOException, XmlPullParserException
     {
         // Existing Metadata in target stage
-
-        Reader existingMetadataReader = new FileReader( existingMetadata );
-
-        Metadata existing = reader.read( existingMetadataReader );
-
-        // Staged Metadata
-
-        File stagedMetadataFile = new File( existingMetadata.getParentFile(), MAVEN_METADATA );
-
-        Reader stagedMetadataReader = new FileReader( stagedMetadataFile );
-
-        Metadata staged = reader.read( stagedMetadataReader );
-
-        // Merge
-
-        existing.merge( staged );
-
-        Writer writer = new FileWriter( existingMetadata );
-
-        this.writer.write( writer, existing );
-
-        writer.close();
-        stagedMetadataReader.close();
-        existingMetadataReader.close();
-
-
-        // Mark all metadata as in-process and regenerate the checksums as they will be different
-        // after the merger
-
-        try
+        try ( Reader existingMetadataReader = Files.newBufferedReader( 
+                existingMetadata.toPath(), StandardCharsets.UTF_8 ) )
         {
-            File newMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" + IN_PROCESS_MARKER );
-
-            FileUtils.fileWrite( newMd5.getAbsolutePath(), checksum( existingMetadata, MD5 ) );
-
-            File oldMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" );
-
-            oldMd5.delete();
-
-            File newSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" + IN_PROCESS_MARKER );
-
-            FileUtils.fileWrite( newSha1.getAbsolutePath(), checksum( existingMetadata, SHA1 ) );
-
-            File oldSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" );
-
-            oldSha1.delete();
+            Metadata existing = metadataReader.read( existingMetadataReader );
+    
+            // Staged Metadata  
+            File stagedMetadataFile = new File( existingMetadata.getParentFile(), MAVEN_METADATA );
+    
+            try ( Reader stagedMetadataReader = Files.newBufferedReader( stagedMetadataFile.toPath(), StandardCharsets.UTF_8 ) )
+            {
+                Metadata staged = metadataReader.read( stagedMetadataReader );
+                existing.merge( staged );
+            }
+            
+            try ( Writer writer = Files.newBufferedWriter( existingMetadata.toPath(), StandardCharsets.UTF_8 ) )
+            {
+                metadataWriter.write( writer, existing );
+            }
+            
+            // Mark all metadata as in-process and regenerate the checksums as they will be different
+            // after the merger
+            try
+            {
+                File newMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" + IN_PROCESS_MARKER );
+    
+                FileUtils.write( newMd5, checksum( existingMetadata, MD5 ), StandardCharsets.UTF_8 );
+    
+                File oldMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" );
+    
+                oldMd5.delete();
+    
+                File newSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" + IN_PROCESS_MARKER );
+    
+                FileUtils.write( newSha1, checksum( existingMetadata, SHA1 ), StandardCharsets.UTF_8 );
+    
+                File oldSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" );
+    
+                oldSha1.delete();
+            }
+            catch ( NoSuchAlgorithmException e )
+            {
+                throw new RuntimeException( e );
+            }
+    
+            // We have the new merged copy so we're good
+            stagedMetadataFile.delete();
         }
-        catch ( NoSuchAlgorithmException e )
-        {
-            throw new RuntimeException( e );
-        }
-
-        // We have the new merged copy so we're good
-
-        stagedMetadataFile.delete();
     }
 
     private String checksum( File file, String type )
         throws IOException, NoSuchAlgorithmException
     {
         MessageDigest md5 = MessageDigest.getInstance( type );
-
-        InputStream is = new FileInputStream( file );
-
         // CHECKSTYLE_OFF: MagicNumber
         byte[] buf = new byte[8192];
         // CHECKSTYLE_ON: MagicNumber
 
-        int i;
-
-        while ( ( i = is.read( buf ) ) >= 0 )
+        try ( InputStream is = new FileInputStream( file ) )
         {
-            md5.update( buf, 0, i );
+            int i;
+            while ( ( i = is.read( buf ) ) >= 0 )
+            {
+                md5.update( buf, 0, i );
+            }
         }
-
-        is.close();
 
         return encode( md5.digest() );
     }
@@ -454,6 +417,7 @@ public class DefaultRepositoryCopier
     }
 
     private void scan( Wagon wagon, String basePath, List<String> collected )
+        throws TransferFailedException, AuthorizationException
     {
         try
         {
@@ -473,49 +437,24 @@ public class DefaultRepositoryCopier
                 }
             }
         }
-        catch ( TransferFailedException e )
-        {
-            throw new RuntimeException( e );
-        }
         catch ( ResourceDoesNotExistException e )
         {
-            // is thrown when calling getFileList on a file
+            // thrown when calling getFileList on a file
             collected.add( basePath );
         }
-        catch ( AuthorizationException e )
-        {
-            throw new RuntimeException( e );
-        }
-
     }
 
     protected List<String> scanForArtifactPaths( ArtifactRepository repository )
+        throws WagonException
     {
-        List<String> collected;
-        try
-        {
-            Wagon wagon = wagonManager.getWagon( repository.getProtocol() );
-            Repository artifactRepository = new Repository( repository.getId(), repository.getUrl() );
-            wagon.connect( artifactRepository );
-            collected = new ArrayList<String>();
-            scan( wagon, "/", collected );
-            wagon.disconnect();
+        Wagon wagon = wagonManager.getWagon( repository.getProtocol() );
+        Repository artifactRepository = new Repository( repository.getId(), repository.getUrl() );
+        wagon.connect( artifactRepository );
+        List<String> collected = new ArrayList<>();
+        scan( wagon, "/", collected );
+        wagon.disconnect();
 
-            return collected;
-
-        }
-        catch ( UnsupportedProtocolException e )
-        {
-            throw new RuntimeException( e );
-        }
-        catch ( ConnectionException e )
-        {
-            throw new RuntimeException( e );
-        }
-        catch ( AuthenticationException e )
-        {
-            throw new RuntimeException( e );
-        }
+        return collected;
     }
 
     public void enableLogging( Logger logger )
