@@ -35,6 +35,8 @@ import org.apache.maven.wagon.WagonException;
 import org.apache.maven.wagon.authentication.AuthenticationException;
 import org.apache.maven.wagon.authentication.AuthenticationInfo;
 import org.apache.maven.wagon.authorization.AuthorizationException;
+import org.apache.maven.wagon.providers.ssh.interactive.InteractiveUserInfo;
+import org.apache.maven.wagon.providers.ssh.jsch.AbstractJschWagon;
 import org.apache.maven.wagon.repository.Repository;
 import org.codehaus.plexus.logging.LogEnabled;
 import org.codehaus.plexus.logging.Logger;
@@ -129,7 +131,7 @@ public class DefaultRepositoryCopier
 
             FileUtils.mkdir( f.getParentFile().getAbsolutePath() );
 
-            logger.info( "Downloading file from the source repository: " + s );
+            logger.info( "Downloading file from the source repository: " + s + " f" + f );
 
             sourceWagon.get( s, f );
         }
@@ -143,6 +145,11 @@ public class DefaultRepositoryCopier
         logger.info( "Downloading metadata from the target repository." );
 
         Wagon targetWagon = wagonManager.getWagon( targetRepository );
+        if (targetWagon instanceof AbstractJschWagon && interactiveUserInfoOverride != null)
+        {
+            AbstractJschWagon jschWagon = (AbstractJschWagon) targetWagon;
+            jschWagon.setInteractiveUserInfo(interactiveUserInfoOverride);
+        }
 
         if ( ! ( targetWagon instanceof CommandExecutor ) )
         {
@@ -172,6 +179,7 @@ public class DefaultRepositoryCopier
 
                 try
                 {
+                    System.out.println( "downloading " + s + " f " + emf );
                     targetWagon.get( s, emf );
                 }
                 catch ( ResourceDoesNotExistException e )
@@ -179,6 +187,8 @@ public class DefaultRepositoryCopier
                     // We don't have an equivalent on the targetRepositoryUrl side because we have something
                     // new on the sourceRepositoryUrl side so just skip the metadata merging.
 
+                    System.out.println("oh dear");
+                    e.printStackTrace();
                     continue;
                 }
 
@@ -251,8 +261,15 @@ public class DefaultRepositoryCopier
 
         String command = "unzip -o -qq -d " + targetRepoBaseDirectory + " " + targetRepoBaseDirectory + "/" + fileName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( command );
-
+        logger.info(" MB constructed the command !! " + targetWagon.getClass() );
+        try
+        {
+            ( (CommandExecutor) targetWagon ).executeCommand( command );
+        }
+        catch (Exception ee)
+        {
+            logger.error("MB Error", ee);
+        }
         logger.info( "Deleting zip file from the target repository." );
 
         command = "rm -f " + targetRepoBaseDirectory + "/" + fileName;
@@ -272,6 +289,13 @@ public class DefaultRepositoryCopier
         ( (CommandExecutor) targetWagon ).executeCommand( command );
 
         targetWagon.disconnect();
+    }
+
+    private InteractiveUserInfo interactiveUserInfoOverride;
+
+    public void overrideInteractiveUserInfo(InteractiveUserInfo interactiveUserInfo)
+    {
+        this.interactiveUserInfoOverride = interactiveUserInfo;
     }
 
     private void scanDirectory( File basedir, File dir, ZipOutputStream zos, String version, Set moveCommands )
