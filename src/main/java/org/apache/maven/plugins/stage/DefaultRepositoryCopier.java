@@ -226,28 +226,29 @@ public class DefaultRepositoryCopier
         String targetRepoBaseDirectory = targetRepository.getBasedir();
 
         // We use the super quiet option here as all the noise seems to kill/stall the connection
+        String unzipCommand =
+            "unzip -o -qq -d " + targetRepoBaseDirectory + " " + targetRepoBaseDirectory + "/" + fileName;
 
-        String unzipCommand = "unzip -o -qq -d " + targetRepoBaseDirectory + " " + targetRepoBaseDirectory + "/" + fileName;
-
-        ( (CommandExecutor) targetWagon ).executeCommand( unzipCommand );
+        CommandExecutor commandExecutor = (CommandExecutor) targetWagon;
+        commandExecutor.executeCommand( unzipCommand );
 
         logger.info( "Deleting zip file from the target repository." );
 
         String rmCommand = "rm -f " + targetRepoBaseDirectory + "/" + fileName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( rmCommand );
+        commandExecutor.executeCommand( rmCommand );
 
         logger.info( "Running rename script on the target machine." );
 
         String renameCommand = "cd " + targetRepoBaseDirectory + "; sh " + renameScriptName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( renameCommand );
+        commandExecutor.executeCommand( renameCommand );
 
         logger.info( "Deleting rename script from the target repository." );
 
         String deleteCommand = "rm -f " + targetRepoBaseDirectory + "/" + renameScriptName;
 
-        ( (CommandExecutor) targetWagon ).executeCommand( deleteCommand );
+        commandExecutor.executeCommand( deleteCommand );
 
         targetWagon.disconnect();
     }
@@ -324,7 +325,8 @@ public class DefaultRepositoryCopier
             // Staged Metadata  
             File stagedMetadataFile = new File( existingMetadata.getParentFile(), MAVEN_METADATA );
     
-            try ( Reader stagedMetadataReader = Files.newBufferedReader( stagedMetadataFile.toPath(), StandardCharsets.UTF_8 ) )
+            try ( Reader stagedMetadataReader = 
+                  Files.newBufferedReader( stagedMetadataFile.toPath(), StandardCharsets.UTF_8 ) )
             {
                 Metadata staged = metadataReader.read( stagedMetadataReader );
                 existing.merge( staged );
@@ -347,7 +349,8 @@ public class DefaultRepositoryCopier
     
                 oldMd5.delete();
     
-                File newSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" + IN_PROCESS_MARKER );
+                File newSha1 = new File( 
+                    existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" + IN_PROCESS_MARKER );
     
                 FileUtils.write( newSha1, checksum( existingMetadata, SHA1 ), StandardCharsets.UTF_8 );
     
