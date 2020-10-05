@@ -179,7 +179,6 @@ public class DefaultRepositoryCopier
 
                 try
                 {
-                    System.out.println( "downloading " + s + " f " + emf );
                     targetWagon.get( s, emf );
                 }
                 catch ( ResourceDoesNotExistException e )
@@ -261,15 +260,7 @@ public class DefaultRepositoryCopier
 
         String command = "unzip -o -qq -d " + targetRepoBaseDirectory + " " + targetRepoBaseDirectory + "/" + fileName;
 
-        logger.info(" MB constructed the command !! " + targetWagon.getClass() );
-        try
-        {
-            ( (CommandExecutor) targetWagon ).executeCommand( command );
-        }
-        catch (Exception ee)
-        {
-            logger.error("MB Error", ee);
-        }
+        ( (CommandExecutor) targetWagon ).executeCommand( command );
         logger.info( "Deleting zip file from the target repository." );
 
         command = "rm -f " + targetRepoBaseDirectory + "/" + fileName;

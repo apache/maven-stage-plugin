@@ -25,14 +25,12 @@ import org.apache.maven.wagon.repository.Repository;
 import org.apache.sshd.common.NamedFactory;
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory;
 import org.apache.sshd.server.Command;
-import org.apache.sshd.server.CommandFactory;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.UserAuth;
 import org.apache.sshd.server.auth.UserAuthNoneFactory;
 import org.apache.sshd.server.auth.pubkey.AcceptAllPublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.scp.ScpCommandFactory;
-import org.apache.sshd.server.scp.UnknownCommand;
 import org.apache.sshd.server.subsystem.sftp.SftpSubsystemFactory;
 import org.codehaus.plexus.PlexusTestCase;
 
@@ -43,8 +41,6 @@ import java.io.Reader;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /** @author Jason van Zyl */
 public class RepositoryCopierTest
@@ -60,16 +56,14 @@ public class RepositoryCopierTest
     {
         super.setUp();
 
-        final Path serverFileSystemRoot = new File( getBasedir(), "src/test/target-repository" ).toPath();
-
         sshd = SshServer.setUpDefaultServer();
-        sshd.setPort( 3542 );
+        sshd.setPort( 3543 );
         sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
         sshd.setFileSystemFactory(new VirtualFileSystemFactory() {
             @Override
             public Path getDefaultHomeDir()
             {
-                return serverFileSystemRoot;
+                return serverFileSystemRoot();
             }
         });
 
@@ -79,27 +73,7 @@ public class RepositoryCopierTest
         sshd.setPublickeyAuthenticator(AcceptAllPublickeyAuthenticator.INSTANCE);
 
         final ScpCommandFactory scpCommandFactory = new ScpCommandFactory();
-        scpCommandFactory.setDelegateCommandFactory(
-            new CommandFactory()
-            {
-                @Override
-                public Command createCommand(String command)
-                {
-                    final Pattern pattern = Pattern.compile("^unzip -o -qq -d (.+?) (.+)");
-                    final Matcher matcher = pattern.matcher( command.trim() );
-
-                    if ( matcher.matches() )
-                    {
-                        System.out.println( " MB matches! " );
-
-                        final String targetDir = matcher.group( 1 );
-                        final String zipFile = matcher.group( 2 );
-                        return new UnzipCommand( serverFileSystemRoot, targetDir, zipFile );
-                    }
-                    return new UnknownCommand(command);
-                }
-            }
-        );
+        scpCommandFactory.setDelegateCommandFactory( new FakeUnixCommandFactory( serverFileSystemRoot() ) );
         sshd.setCommandFactory(scpCommandFactory);
 
         List<NamedFactory<Command>> namedFactoryList = new ArrayList<>();
@@ -113,6 +87,11 @@ public class RepositoryCopierTest
         {
             throw new RuntimeException(e);
         }
+    }
+
+    private Path serverFileSystemRoot()
+    {
+        return new File( getBasedir(), "src/test/target-repository" ).toPath();
     }
 
     public void tearDown() throws Exception
@@ -129,7 +108,7 @@ public class RepositoryCopierTest
         File stagingRepo = new File( getBasedir(), "src/test/staging-repository" );
 
         Repository sourceRepository = new Repository( "source", "file://" + stagingRepo );
-        Repository targetRepository = new Repository( "target", "sftp://127.0.0.1:" + 3542 );
+        Repository targetRepository = new Repository( "target", "sftp://127.0.0.1:" + 3543 );
 
         copier.copy( sourceRepository, targetRepository, version );
 

@@ -152,36 +152,6 @@ under the License.
             </excludes>
           </configuration>
         </plugin>
-        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-        <plugin>
-        	<groupId>org.eclipse.m2e</groupId>
-        	<artifactId>lifecycle-mapping</artifactId>
-        	<version>1.0.0</version>
-        	<configuration>
-        		<lifecycleMappingMetadata>
-        			<pluginExecutions>
-        				<pluginExecution>
-        					<pluginExecutionFilter>
-        						<groupId>
-        							org.apache.maven.plugins
-        						</groupId>
-        						<artifactId>
-        							maven-plugin-plugin
-        						</artifactId>
-        						<versionRange>[3.5.2,)</versionRange>
-        						<goals>
-        							<goal>helpmojo</goal>
-        							<goal>descriptor</goal>
-        						</goals>
-        					</pluginExecutionFilter>
-        					<action>
-        						<ignore></ignore>
-        					</action>
-        				</pluginExecution>
-        			</pluginExecutions>
-        		</lifecycleMappingMetadata>
-        	</configuration>
-        </plugin>
       </plugins>
     </pluginManagement>
     <plugins>
@@ -196,6 +166,15 @@ under the License.
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>2.22.2</version>
+        <configuration>
+          <forkCount>0</forkCount>
+          <environmentVariables></environmentVariables>
+        </configuration>
       </plugin>
     </plugins>
   </build>

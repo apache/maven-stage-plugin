@@ -34,42 +34,62 @@ public class UnzipCommand extends AbstractCommand
     private final Path fileToUnzip;
     private final Path target;
 
-    public UnzipCommand( Path fileSystemRoot, String fileToUnzip, String targetDir )
+    public UnzipCommand( Path fileToUnzip, Path target )
     {
-        this.fileToUnzip = fileSystemRoot.resolve( fileToUnzip );
-        this.target = fileSystemRoot.resolve( targetDir );
+        this.fileToUnzip = fileToUnzip;
+        this.target = target;
     }
 
     @Override
     public void start( Environment environment )
     {
-        System.out.println( "MB started unzipping" );
-
         try
         {
             try ( ZipInputStream zis = new ZipInputStream( new FileInputStream( fileToUnzip.toFile() ) ) )
             {
-                ZipEntry zipEntry = zis.getNextEntry();
-                while ( zipEntry != null )
+                ZipEntry zipEntry;
+                while ( (zipEntry = zis.getNextEntry()) != null )
                 {
                     final File newFile = target.resolve( zipEntry.getName() ).toFile();
-                    try (FileOutputStream fos = new FileOutputStream( newFile ))
+
+                    if ( zipEntry.isDirectory() )
                     {
-                        final byte[] buffer = new byte[1024];
-                        int bytesRead;
-                        while ( ( bytesRead = zis.read( buffer ) ) > 0)
+                        ensureDirectoryExists( newFile );
+                    }
+                    else
+                    {
+                        ensureDirectoryExists( newFile.getParentFile() );
+                        try (FileOutputStream fos = new FileOutputStream( newFile ))
                         {
-                            fos.write( buffer, 0, bytesRead );
+                            final byte[] buffer = new byte[1024];
+                            int bytesRead;
+                            while ( ( bytesRead = zis.read( buffer ) ) > 0)
+                            {
+                                fos.write( buffer, 0, bytesRead );
+                            }
                         }
                     }
-                    zipEntry = zis.getNextEntry();
+                    zis.closeEntry();
                 }
-                zis.closeEntry();
             }
+            System.out.println("Finished unzipping with no error");
+            exitCallback.onExit( 0 );
         }
         catch (IOException e)
         {
-            throw new RuntimeException(e);
+            // 3 being unix unzip's "severe error"
+            exitCallback.onExit( 3, e.getMessage() );
+        }
+    }
+
+    private void ensureDirectoryExists( File directory )
+    {
+        if ( !directory.exists() )
+        {
+            if ( !directory.mkdirs() )
+            {
+                throw new RuntimeException("Couldn't make directories " + directory);
+            }
         }
     }
 
