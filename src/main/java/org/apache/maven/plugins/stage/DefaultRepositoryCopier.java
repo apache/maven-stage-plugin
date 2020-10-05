@@ -145,10 +145,10 @@ public class DefaultRepositoryCopier
         logger.info( "Downloading metadata from the target repository." );
 
         Wagon targetWagon = wagonManager.getWagon( targetRepository );
-        if (targetWagon instanceof AbstractJschWagon && interactiveUserInfoOverride != null)
+        if ( targetWagon instanceof AbstractJschWagon && interactiveUserInfoOverride != null )
         {
             AbstractJschWagon jschWagon = (AbstractJschWagon) targetWagon;
-            jschWagon.setInteractiveUserInfo(interactiveUserInfoOverride);
+            jschWagon.setInteractiveUserInfo( interactiveUserInfoOverride );
         }
 
         if ( ! ( targetWagon instanceof CommandExecutor ) )
@@ -186,8 +186,6 @@ public class DefaultRepositoryCopier
                     // We don't have an equivalent on the targetRepositoryUrl side because we have something
                     // new on the sourceRepositoryUrl side so just skip the metadata merging.
 
-                    System.out.println("oh dear");
-                    e.printStackTrace();
                     continue;
                 }
 
@@ -284,7 +282,11 @@ public class DefaultRepositoryCopier
 
     private InteractiveUserInfo interactiveUserInfoOverride;
 
-    public void overrideInteractiveUserInfo(InteractiveUserInfo interactiveUserInfo)
+    /**
+     * Override the InteractiveUserInfo passed to JSch
+     * @param interactiveUserInfo
+     */
+    void overrideInteractiveUserInfo( InteractiveUserInfo interactiveUserInfo )
     {
         this.interactiveUserInfoOverride = interactiveUserInfo;
     }

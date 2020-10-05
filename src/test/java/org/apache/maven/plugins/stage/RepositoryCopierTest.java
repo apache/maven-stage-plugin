@@ -19,6 +19,8 @@ package org.apache.maven.plugins.stage;
  * under the License.
  */
 
+import com.jcraft.jsch.JSch;
+import org.apache.commons.io.FileUtils;
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.wagon.repository.Repository;
@@ -46,7 +48,12 @@ import java.util.List;
 public class RepositoryCopierTest
     extends PlexusTestCase
 {
-    private final String version = "2.0.6";
+    private static final int PORT = 3543;
+    private static final String STAGING_REPOSITORY = "src/test/staging-repository";
+    private static final String TARGET_REPOSITORY = "src/test/target-repository";
+    private static final String WORKING_TARGET_REPOSITORY = "src/test/working-target-repository";
+    private static final String version = "2.0.6";
+    public static final String KEX = "diffie-hellman-group1-sha1";
 
     private final MetadataXpp3Reader reader = new MetadataXpp3Reader();
 
@@ -55,10 +62,15 @@ public class RepositoryCopierTest
     public void setUp() throws Exception
     {
         super.setUp();
+        startFtpServer();
+        makeWorkingRepository();
+    }
 
+    private void startFtpServer()
+    {
         sshd = SshServer.setUpDefaultServer();
-        sshd.setPort( 3543 );
-        sshd.setKeyPairProvider(new SimpleGeneratorHostKeyProvider());
+        sshd.setPort( PORT );
+        sshd.setKeyPairProvider( new SimpleGeneratorHostKeyProvider() );
         sshd.setFileSystemFactory(new VirtualFileSystemFactory() {
             @Override
             public Path getDefaultHomeDir()
@@ -68,17 +80,17 @@ public class RepositoryCopierTest
         });
 
         List<NamedFactory<UserAuth>> userAuthFactories = new ArrayList<>();
-        userAuthFactories.add(new UserAuthNoneFactory());
-        sshd.setUserAuthFactories(userAuthFactories);
-        sshd.setPublickeyAuthenticator(AcceptAllPublickeyAuthenticator.INSTANCE);
+        userAuthFactories.add( new UserAuthNoneFactory() );
+        sshd.setUserAuthFactories( userAuthFactories );
+        sshd.setPublickeyAuthenticator( AcceptAllPublickeyAuthenticator.INSTANCE );
 
         final ScpCommandFactory scpCommandFactory = new ScpCommandFactory();
         scpCommandFactory.setDelegateCommandFactory( new FakeUnixCommandFactory( serverFileSystemRoot() ) );
         sshd.setCommandFactory(scpCommandFactory);
 
         List<NamedFactory<Command>> namedFactoryList = new ArrayList<>();
-        namedFactoryList.add(new SftpSubsystemFactory());
-        sshd.setSubsystemFactories(namedFactoryList);
+        namedFactoryList.add( new SftpSubsystemFactory() );
+        sshd.setSubsystemFactories( namedFactoryList );
         try
         {
             sshd.start();
@@ -89,26 +101,53 @@ public class RepositoryCopierTest
         }
     }
 
+    // To make clean-up easier, copy the entire target repository to a new working copy. That way, rather than worry about what
+    // modifications we might have made, we can simply delete the whole thing when we're done.
+    private void makeWorkingRepository()
+    {
+        final File prototype = new File( getBasedir(), TARGET_REPOSITORY );
+        final File workingDir = new File( getBasedir(), WORKING_TARGET_REPOSITORY );
+        try
+        {
+            FileUtils.copyDirectory( prototype, workingDir );
+        }
+        catch ( IOException e )
+        {
+            throw new RuntimeException( "Couldn't copy target repository directory", e );
+        }
+    }
+
+    private void deleteWorkingRepository() throws IOException
+    {
+        FileUtils.deleteDirectory( new File( getBasedir(), WORKING_TARGET_REPOSITORY ) );
+    }
+
     private Path serverFileSystemRoot()
     {
-        return new File( getBasedir(), "src/test/target-repository" ).toPath();
+        return new File( getBasedir(), WORKING_TARGET_REPOSITORY ).toPath();
     }
 
     public void tearDown() throws Exception
     {
         super.tearDown();
         sshd.stop();
+        //deleteWorkingRepository();
     }
 
     public void testCopy() throws Exception
     {
+        System.out.println("MB $%%%$$!");
+        System.out.println(JSch.getConfig("kex"));
+
+        JSch.setConfig("kex", KEX);
+
         DefaultRepositoryCopier copier = (DefaultRepositoryCopier) container.lookup( RepositoryCopier.ROLE );
         copier.overrideInteractiveUserInfo( new FakeInteractiveUserInfo() );
 
-        File stagingRepo = new File( getBasedir(), "src/test/staging-repository" );
+        File stagingRepo = new File( getBasedir(), STAGING_REPOSITORY );
 
         Repository sourceRepository = new Repository( "source", "file://" + stagingRepo );
-        Repository targetRepository = new Repository( "target", "sftp://127.0.0.1:" + 3543 );
+        Repository targetRepository = new Repository( "target", "sftp://localhost:" + PORT);
 
         copier.copy( sourceRepository, targetRepository, version );
 
@@ -135,10 +174,9 @@ public class RepositoryCopierTest
 
         for (String artifact : artifacts)
         {
-            ///testMavenArtifact(targetRepo, artifact);
+            testMavenArtifact( serverFileSystemRoot().toFile(), artifact );
         }
 
-        // leave something behind to clean it up.
         // Test merging
         // Test MD5
         // Test SHA1
@@ -150,22 +188,23 @@ public class RepositoryCopierTest
     {
         File basedir = new File( repo, "org/apache/maven/" + artifact );
         File versionDir = new File( basedir, version );
-        //assertTrue( versionDir.exists() );
+        assertTrue( versionDir.exists() );
 
-        Reader r = new FileReader( new File( basedir, RepositoryCopier.MAVEN_METADATA) );
-        Metadata metadata = reader.read( r );
+        try ( Reader r = new FileReader( new File( basedir, RepositoryCopier.MAVEN_METADATA ) ) )
+        {
+            Metadata metadata = reader.read( r );
 
-        // Make sure our new versions has been setup as the release.
-        //assertEquals( version, metadata.getVersioning().getRelease() );
-        //assertEquals( "20070327020553", metadata.getVersioning().getLastUpdated() );
+            // Make sure our new versions has been setup as the release.
+            assertEquals( version, metadata.getVersioning().getRelease() );
+            assertEquals( "20070327020553", metadata.getVersioning().getLastUpdated() );
 
-        // Make sure we didn't whack old versions.
-        List versions = metadata.getVersioning().getVersions();
-        //assertTrue( versions.contains( "2.0.1" ) );
-        //assertTrue( versions.contains( "2.0.2" ) );
-        //assertTrue( versions.contains( "2.0.3" ) );
-        //assertTrue( versions.contains( "2.0.4" ) );
-        //assertTrue( versions.contains( "2.0.5" ) );
-        r.close();
+            // Make sure we didn't whack old versions.
+            List<String> versions = metadata.getVersioning().getVersions();
+            assertTrue( versions.contains( "2.0.1" ) );
+            assertTrue( versions.contains( "2.0.2" ) );
+            assertTrue( versions.contains( "2.0.3" ) );
+            assertTrue( versions.contains( "2.0.4" ) );
+            assertTrue( versions.contains( "2.0.5" ) );
+        }
     }
 }

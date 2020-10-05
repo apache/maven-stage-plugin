@@ -72,7 +72,6 @@ public class UnzipCommand extends AbstractCommand
                     zis.closeEntry();
                 }
             }
-            System.out.println("Finished unzipping with no error");
             exitCallback.onExit( 0 );
         }
         catch (IOException e)

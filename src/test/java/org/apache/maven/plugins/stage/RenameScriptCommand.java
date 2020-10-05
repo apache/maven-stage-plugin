@@ -38,10 +38,10 @@ class RenameScriptCommand extends AbstractCommand
     private final Path currentDirectory;
     private final Path scriptLocation;
 
-    RenameScriptCommand( Path currentDirectory, Path scriptLocation )
+    RenameScriptCommand( Path currentDirectory, String scriptLocation )
     {
         this.currentDirectory = currentDirectory;
-        this.scriptLocation = scriptLocation;
+        this.scriptLocation = currentDirectory.resolve( scriptLocation );
     }
 
     @Override
@@ -55,12 +55,13 @@ class RenameScriptCommand extends AbstractCommand
                 Matcher matcher = MV_PATTERN.matcher(line.trim());
                 if ( matcher.matches() )
                 {
-                    String fromFile = matcher.group( 1 );
-                    String toFile = matcher.group( 2 );
-
-                    // TODO
+                    Path fromFile = currentDirectory.resolve( matcher.group( 1 ) );
+                    Path toFile = currentDirectory.resolve( matcher.group( 2 ) );
+                    // Original script does not care whether this succeeds or not, so neither do we
+                    fromFile.toFile().renameTo(toFile.toFile());
                 }
             }
+            exitCallback.onExit( 0 );
         }
         catch (IOException e)
         {

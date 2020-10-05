@@ -63,7 +63,7 @@ class FakeUnixCommandFactory implements CommandFactory
         }
         else if ( renameScriptMatcher.matches() )
         {
-            return new RenameScriptCommand( fakeFileSystemRoot, getLocalPath ( renameScriptMatcher.group( 1 ) ) );
+            return new RenameScriptCommand( fakeFileSystemRoot, renameScriptMatcher.group( 1 ) );
         }
         return new UnknownCommand(command);
     }
