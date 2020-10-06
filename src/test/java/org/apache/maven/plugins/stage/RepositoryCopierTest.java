@@ -158,7 +158,7 @@ public class RepositoryCopierTest
         File stagingRepo = new File( getBasedir(), STAGING_REPOSITORY );
 
         Repository sourceRepository = new Repository( "source", "file://" + stagingRepo );
-        Repository targetRepository = new Repository( "target", "sftp://localhost:" + PORT);
+        Repository targetRepository = new Repository( "target", "sftp://localhost:" + PORT );
 
         copier.copy( sourceRepository, targetRepository, version );
 
@@ -195,27 +195,9 @@ public class RepositoryCopierTest
     }
 
     private void testMavenArtifact( File repo, String artifact )
-        throws Exception
     {
         File basedir = new File( repo, "org/apache/maven/" + artifact );
         File versionDir = new File( basedir, version );
         assertTrue( versionDir.exists() );
-
-        try ( Reader r = new FileReader( new File( basedir, RepositoryCopier.MAVEN_METADATA ) ) )
-        {
-            Metadata metadata = reader.read( r );
-
-            // Make sure our new versions has been setup as the release.
-            assertEquals( version, metadata.getVersioning().getRelease() );
-            assertEquals( "20070327020553", metadata.getVersioning().getLastUpdated() );
-
-            // Make sure we didn't whack old versions.
-            List<String> versions = metadata.getVersioning().getVersions();
-            assertTrue( versions.contains( "2.0.1" ) );
-            assertTrue( versions.contains( "2.0.2" ) );
-            assertTrue( versions.contains( "2.0.3" ) );
-            assertTrue( versions.contains( "2.0.4" ) );
-            assertTrue( versions.contains( "2.0.5" ) );
-        }
     }
 }
