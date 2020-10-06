@@ -29,6 +29,9 @@ import java.nio.file.Path;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+/**
+ * SSHD command which mimics unix unzip.
+ */
 public class UnzipCommand extends AbstractCommand
 {
     private final Path fileToUnzip;
@@ -76,7 +79,7 @@ public class UnzipCommand extends AbstractCommand
         }
         catch (IOException e)
         {
-            // 3 being unix unzip's "severe error"
+            // 3 being "severe error"
             exitCallback.onExit( 3, e.getMessage() );
         }
     }

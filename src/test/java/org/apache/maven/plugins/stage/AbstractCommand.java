@@ -26,7 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * Maintain all of the generic state of a Command.
+ * Maintain all of the generic mutable state of an SSHD Command.
  */
 abstract class AbstractCommand implements Command
 {

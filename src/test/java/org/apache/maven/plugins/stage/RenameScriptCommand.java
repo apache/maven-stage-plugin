@@ -31,6 +31,9 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * SSHD command which mimicks Stage Plugin's rename script. In practice this is just a bunch of mv commands.
+ */
 class RenameScriptCommand extends AbstractCommand
 {
     private static final Pattern MV_PATTERN = Pattern.compile("mv (.+?) (.+?)");

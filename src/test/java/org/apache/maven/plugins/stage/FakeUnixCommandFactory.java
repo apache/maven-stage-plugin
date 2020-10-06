@@ -29,7 +29,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Command factory that fakes some unix commands
+ * Command factory that mimics a handful of unix commands.
  */
 class FakeUnixCommandFactory implements CommandFactory
 {

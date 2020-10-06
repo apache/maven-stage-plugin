@@ -23,6 +23,9 @@ import org.apache.sshd.server.Environment;
 
 import java.nio.file.Path;
 
+/**
+ * SSHD command which mimics coreutils's rm command.
+ */
 class RmCommand extends AbstractCommand
 {
     private final Path fileToRemove;

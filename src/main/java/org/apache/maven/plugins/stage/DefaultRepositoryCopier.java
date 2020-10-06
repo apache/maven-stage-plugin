@@ -81,6 +81,8 @@ public class DefaultRepositoryCopier
 
     private Logger logger;
 
+    private InteractiveUserInfo interactiveUserInfoOverride;
+
     public void copy( Repository sourceRepository, Repository targetRepository, String version )
         throws WagonException, IOException
     {
@@ -280,11 +282,10 @@ public class DefaultRepositoryCopier
         targetWagon.disconnect();
     }
 
-    private InteractiveUserInfo interactiveUserInfoOverride;
-
     /**
-     * Override the InteractiveUserInfo passed to JSch
-     * @param interactiveUserInfo
+     * Override the InteractiveUserInfo passed to JSch, to provide alternative user input.
+     *
+     * @param interactiveUserInfo object which can prompt and provide responses
      */
     void overrideInteractiveUserInfo( InteractiveUserInfo interactiveUserInfo )
     {

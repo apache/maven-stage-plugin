@@ -21,6 +21,9 @@ package org.apache.maven.plugins.stage;
 
 import org.apache.maven.wagon.providers.ssh.interactive.InteractiveUserInfo;
 
+/**
+ * Used as alternative for user input. Accept any host for the sake of the test.
+ */
 class FakeInteractiveUserInfo implements InteractiveUserInfo
 {
     @Override
