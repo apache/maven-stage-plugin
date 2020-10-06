@@ -137,6 +137,12 @@ under the License.
       <version>1.2.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.58</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -147,6 +153,7 @@ under the License.
           <artifactId>apache-rat-plugin</artifactId>
           <configuration>
             <excludes combine.children="append">
+              <exclude>src/test/*</exclude>
               <exclude>src/test/staging-repository/**/*</exclude>
               <exclude>src/test/target-repository/**/*</exclude>
             </excludes>

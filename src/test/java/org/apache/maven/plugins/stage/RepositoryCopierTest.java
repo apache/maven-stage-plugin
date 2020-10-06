@@ -21,11 +21,17 @@ package org.apache.maven.plugins.stage;
 
 import com.jcraft.jsch.JSch;
 import org.apache.commons.io.FileUtils;
+import org.apache.maven.artifact.manager.WagonManager;
 import org.apache.maven.artifact.repository.metadata.Metadata;
 import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.wagon.repository.Repository;
 import org.apache.sshd.common.NamedFactory;
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory;
+import org.apache.sshd.common.kex.KeyExchange;
+import org.apache.sshd.common.keyprovider.AbstractFileKeyPairProvider;
+import org.apache.sshd.common.session.Session;
+import org.apache.sshd.common.session.SessionListener;
+import org.apache.sshd.common.util.SecurityUtils;
 import org.apache.sshd.server.Command;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.UserAuth;
@@ -34,6 +40,7 @@ import org.apache.sshd.server.auth.pubkey.AcceptAllPublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.scp.ScpCommandFactory;
 import org.apache.sshd.server.subsystem.sftp.SftpSubsystemFactory;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.codehaus.plexus.PlexusTestCase;
 
 import java.io.File;
@@ -41,7 +48,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.Path;
+import java.security.Security;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /** @author Jason van Zyl */
@@ -52,8 +61,8 @@ public class RepositoryCopierTest
     private static final String STAGING_REPOSITORY = "src/test/staging-repository";
     private static final String TARGET_REPOSITORY = "src/test/target-repository";
     private static final String WORKING_TARGET_REPOSITORY = "src/test/working-target-repository";
+    private static final String KEY = "src/test/key";
     private static final String version = "2.0.6";
-    public static final String KEX = "diffie-hellman-group1-sha1";
 
     private final MetadataXpp3Reader reader = new MetadataXpp3Reader();
 
@@ -70,7 +79,14 @@ public class RepositoryCopierTest
     {
         sshd = SshServer.setUpDefaultServer();
         sshd.setPort( PORT );
-        sshd.setKeyPairProvider( new SimpleGeneratorHostKeyProvider() );
+
+        Security.addProvider( new BouncyCastleProvider() );
+        AbstractFileKeyPairProvider fileKeyPairProvider = SecurityUtils.createFileKeyPairProvider();
+        fileKeyPairProvider.setFiles(
+            Collections.singletonList( new File( getBasedir(), KEY) )
+        );
+        sshd.setKeyPairProvider( fileKeyPairProvider );
+
         sshd.setFileSystemFactory(new VirtualFileSystemFactory() {
             @Override
             public Path getDefaultHomeDir()
@@ -131,16 +147,11 @@ public class RepositoryCopierTest
     {
         super.tearDown();
         sshd.stop();
-        //deleteWorkingRepository();
+        deleteWorkingRepository();
     }
 
     public void testCopy() throws Exception
     {
-        System.out.println("MB $%%%$$!");
-        System.out.println(JSch.getConfig("kex"));
-
-        JSch.setConfig("kex", KEX);
-
         DefaultRepositoryCopier copier = (DefaultRepositoryCopier) container.lookup( RepositoryCopier.ROLE );
         copier.overrideInteractiveUserInfo( new FakeInteractiveUserInfo() );
 
