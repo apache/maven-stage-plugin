@@ -193,7 +193,7 @@ public class DefaultRepositoryCopier
             }
         }
 
-        Set moveCommands = new TreeSet();
+        Set<String> moveCommands = new TreeSet<>();
 
         // ----------------------------------------------------------------------------
         // Create the Zip file that we will deploy to the targetRepositoryUrl stage
@@ -274,7 +274,7 @@ public class DefaultRepositoryCopier
         targetWagon.disconnect();
     }
 
-    private void scanDirectory( File basedir, File dir, ZipOutputStream zos, String version, Set moveCommands )
+    private void scanDirectory( File basedir, File dir, ZipOutputStream zos, String version, Set<String> moveCommands )
         throws IOException
     {
         if ( dir == null )
@@ -491,13 +491,12 @@ public class DefaultRepositoryCopier
 
     protected List<String> scanForArtifactPaths( ArtifactRepository repository )
     {
-        List<String> collected;
         try
         {
             Wagon wagon = wagonManager.getWagon( repository.getProtocol() );
             Repository artifactRepository = new Repository( repository.getId(), repository.getUrl() );
             wagon.connect( artifactRepository );
-            collected = new ArrayList<String>();
+            List<String> collected = new ArrayList<String>();
             scan( wagon, "/", collected );
             wagon.disconnect();
 
