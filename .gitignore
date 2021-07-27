@@ -14,4 +14,3 @@ out/
 /dependencies.xml
 .java-version
 .checkstyle
-src/test/working-target-repository/

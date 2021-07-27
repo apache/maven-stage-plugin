@@ -19,34 +19,25 @@ package org.apache.maven.plugins.stage;
  * under the License.
  */
 
-import com.jcraft.jsch.JSch;
 import org.apache.commons.io.FileUtils;
-import org.apache.maven.artifact.manager.WagonManager;
-import org.apache.maven.artifact.repository.metadata.Metadata;
-import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.wagon.repository.Repository;
 import org.apache.sshd.common.NamedFactory;
 import org.apache.sshd.common.file.virtualfs.VirtualFileSystemFactory;
-import org.apache.sshd.common.kex.KeyExchange;
 import org.apache.sshd.common.keyprovider.AbstractFileKeyPairProvider;
-import org.apache.sshd.common.session.Session;
-import org.apache.sshd.common.session.SessionListener;
 import org.apache.sshd.common.util.SecurityUtils;
 import org.apache.sshd.server.Command;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.UserAuth;
 import org.apache.sshd.server.auth.UserAuthNoneFactory;
 import org.apache.sshd.server.auth.pubkey.AcceptAllPublickeyAuthenticator;
-import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.scp.ScpCommandFactory;
 import org.apache.sshd.server.subsystem.sftp.SftpSubsystemFactory;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.codehaus.plexus.PlexusTestCase;
 
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.Reader;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.Security;
 import java.util.ArrayList;
@@ -60,19 +51,17 @@ public class RepositoryCopierTest
     private static final int PORT = 3543;
     private static final String STAGING_REPOSITORY = "src/test/staging-repository";
     private static final String TARGET_REPOSITORY = "src/test/target-repository";
-    private static final String WORKING_TARGET_REPOSITORY = "src/test/working-target-repository";
     private static final String KEY = "src/test/key";
     private static final String version = "2.0.6";
 
-    private final MetadataXpp3Reader reader = new MetadataXpp3Reader();
-
     private SshServer sshd;
+    private File workingTargetRepository;
 
     public void setUp() throws Exception
     {
         super.setUp();
-        startFtpServer();
         makeWorkingRepository();
+        startFtpServer();
     }
 
     private void startFtpServer()
@@ -119,13 +108,13 @@ public class RepositoryCopierTest
 
     // To make clean-up easier, copy the entire target repository to a new working copy. That way, rather than worry about what
     // modifications we might have made, we can simply delete the whole thing when we're done.
-    private void makeWorkingRepository()
+    private void makeWorkingRepository() throws IOException
     {
         final File prototype = new File( getBasedir(), TARGET_REPOSITORY );
-        final File workingDir = new File( getBasedir(), WORKING_TARGET_REPOSITORY );
+        workingTargetRepository = Files.createTempDirectory(getClass().getName()).toFile();
         try
         {
-            FileUtils.copyDirectory( prototype, workingDir );
+            FileUtils.copyDirectory( prototype, workingTargetRepository );
         }
         catch ( IOException e )
         {
@@ -135,19 +124,22 @@ public class RepositoryCopierTest
 
     private void deleteWorkingRepository() throws IOException
     {
-        FileUtils.deleteDirectory( new File( getBasedir(), WORKING_TARGET_REPOSITORY ) );
+        // Created as a temp dir so should be deleted automatically, but no harm to do it ourselves
+        if (workingTargetRepository != null) {
+            FileUtils.deleteDirectory(workingTargetRepository);
+        }
     }
 
     private Path serverFileSystemRoot()
     {
-        return new File( getBasedir(), WORKING_TARGET_REPOSITORY ).toPath();
+        return workingTargetRepository.toPath();
     }
 
     public void tearDown() throws Exception
     {
-        super.tearDown();
         sshd.stop();
         deleteWorkingRepository();
+        super.tearDown();
     }
 
     public void testCopy() throws Exception
