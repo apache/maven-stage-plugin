@@ -42,7 +42,6 @@ import org.codehaus.plexus.logging.LogEnabled;
 import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.IOUtil;
-import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
@@ -202,7 +201,7 @@ public class DefaultRepositoryCopier
             }
         }
 
-        Set moveCommands = new TreeSet();
+        Set<String> moveCommands = new TreeSet<>();
 
         // ----------------------------------------------------------------------------
         // Create the Zip file that we will deploy to the targetRepositoryUrl stage
@@ -314,7 +313,7 @@ public class DefaultRepositoryCopier
                 if ( f.getName().endsWith( version ) )
                 {
                     String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
-                    s = StringUtils.replace( s, "\\", "/" );
+                    s = s.replace( '\\', '/' );
 
                     moveCommands.add( "mv " + s + IN_PROCESS_MARKER + " " + s );
                 }
@@ -326,15 +325,15 @@ public class DefaultRepositoryCopier
                 InputStream is = new FileInputStream( f );
 
                 String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
-                s = StringUtils.replace( s, "\\", "/" );
+                s = s.replace( '\\', '/' );
 
                 // We are marking any version directories with the in-process flag so that
-                // anything being unpacked on the target side will not be recogized by Maven
+                // anything being unpacked on the target side will not be recognized by Maven
                 // and so users cannot download partially uploaded files.
 
                 String vtag = "/" + version;
 
-                s = StringUtils.replace( s, vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
+                s = s.replace( vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
 
                 ZipEntry e = new ZipEntry( s );
 
@@ -509,13 +508,12 @@ public class DefaultRepositoryCopier
 
     protected List<String> scanForArtifactPaths( ArtifactRepository repository )
     {
-        List<String> collected;
         try
         {
             Wagon wagon = wagonManager.getWagon( repository.getProtocol() );
             Repository artifactRepository = new Repository( repository.getId(), repository.getUrl() );
             wagon.connect( artifactRepository );
-            collected = new ArrayList<String>();
+            List<String> collected = new ArrayList<String>();
             scan( wagon, "/", collected );
             wagon.disconnect();
 
