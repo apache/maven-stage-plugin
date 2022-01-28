@@ -59,8 +59,8 @@ under the License.
   </distributionManagement>
 
   <properties>
-    <mavenVersion>3.6.3</mavenVersion>
-    <wagonVersion>3.3.4</wagonVersion>
+    <mavenVersion>4.0.0-alpha-1-SNAPSHOT</mavenVersion>
+    <wagonVersion>3.5.2-SNAPSHOT</wagonVersion>
     <javaVersion>8</javaVersion>
     <project.build.outputTimestamp>2020-04-07T21:04:00Z</project.build.outputTimestamp>
   </properties>

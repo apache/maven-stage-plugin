@@ -118,7 +118,7 @@ under the License.
     </dependency>
   </dependencies>
   <properties>
-    <mavenVersion>2.0.6</mavenVersion>
+    <mavenVersion>4.0.0-alpha-1-SNAPSHOT</mavenVersion>
   </properties>
   <dependencyManagement>
     <dependencies>
