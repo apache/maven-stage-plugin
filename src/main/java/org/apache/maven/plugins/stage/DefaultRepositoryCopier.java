@@ -38,6 +38,8 @@ import org.apache.maven.wagon.authorization.AuthorizationException;
 import org.apache.maven.wagon.providers.ssh.interactive.InteractiveUserInfo;
 import org.apache.maven.wagon.providers.ssh.jsch.AbstractJschWagon;
 import org.apache.maven.wagon.repository.Repository;
+import org.codehaus.plexus.component.annotations.Component;
+import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.LogEnabled;
 import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.FileUtils;
@@ -66,8 +68,8 @@ import java.util.zip.ZipOutputStream;
 
 /**
  * @author Jason van Zyl
- * @plexus.component
  */
+@Component( role = RepositoryCopier.class )
 public class DefaultRepositoryCopier
     implements LogEnabled, RepositoryCopier
 {
@@ -75,7 +77,7 @@ public class DefaultRepositoryCopier
 
     private MetadataXpp3Writer writer = new MetadataXpp3Writer();
 
-    /** @plexus.requirement */
+    @Requirement
     private WagonManager wagonManager;
 
     private Logger logger;
