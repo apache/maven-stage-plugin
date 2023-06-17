@@ -306,7 +306,8 @@ public class DefaultRepositoryCopier
             }
             else
             {
-                try (InputStream is = new FileInputStream( f )) {
+                try ( InputStream is = new FileInputStream( f ) )
+                {
                     String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
                     s = s.replace( '\\', '/' );
 
@@ -358,7 +359,8 @@ public class DefaultRepositoryCopier
 
         existing.merge( staged );
 
-        try (Writer writer = new FileWriter( existingMetadata )) {
+        try ( Writer writer = new FileWriter( existingMetadata ) )
+        {
             this.writer.write( writer, existing );
         }
         
@@ -402,7 +404,8 @@ public class DefaultRepositoryCopier
     {
         MessageDigest md5 = MessageDigest.getInstance( type );
 
-        try (InputStream is = new FileInputStream( file )) {
+        try ( InputStream is = new FileInputStream( file ) )
+        {
             // CHECKSTYLE_OFF: MagicNumber
             byte[] buf = new byte[8192];
             // CHECKSTYLE_ON: MagicNumber
