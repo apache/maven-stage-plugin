@@ -19,6 +19,7 @@ package org.apache.maven.plugins.stage;
  * under the License.
  */
 
+import org.apache.commons.io.IOUtils;
 import org.apache.maven.artifact.manager.WagonManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.metadata.Metadata;
@@ -41,7 +42,6 @@ import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.LogEnabled;
 import org.codehaus.plexus.logging.Logger;
 import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
@@ -231,7 +231,7 @@ public class DefaultRepositoryCopier
 
         InputStream is = new FileInputStream( renameScript );
 
-        IOUtil.copy( is, zos );
+        IOUtils.copy( is, zos );
 
         zos.close();
         is.close();
@@ -306,35 +306,33 @@ public class DefaultRepositoryCopier
             }
             else
             {
-                InputStream is = new FileInputStream( f );
+                try (InputStream is = new FileInputStream( f )) {
+                    String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
+                    s = s.replace( '\\', '/' );
 
-                String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
-                s = s.replace( '\\', '/' );
+                    // We are marking any version directories with the in-process flag so that
+                    // anything being unpacked on the target side will not be recognized by Maven
+                    // and so users cannot download partially uploaded files.
 
-                // We are marking any version directories with the in-process flag so that
-                // anything being unpacked on the target side will not be recognized by Maven
-                // and so users cannot download partially uploaded files.
+                    String vtag = "/" + version;
 
-                String vtag = "/" + version;
+                    s = s.replace( vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
 
-                s = s.replace( vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
+                    ZipEntry e = new ZipEntry( s );
 
-                ZipEntry e = new ZipEntry( s );
+                    zos.putNextEntry( e );
 
-                zos.putNextEntry( e );
+                    IOUtils.copy( is, zos );
 
-                IOUtil.copy( is, zos );
+                    int idx = s.indexOf( IN_PROCESS_MARKER );
 
-                is.close();
+                    if ( idx > 0 )
+                    {
+                        String d = s.substring( 0, idx );
 
-                int idx = s.indexOf( IN_PROCESS_MARKER );
-
-                if ( idx > 0 )
-                {
-                    String d = s.substring( 0, idx );
-
-                    moveCommands.add( "mv " + d + IN_PROCESS_MARKER + " " + d );
-                }
+                        moveCommands.add( "mv " + d + IN_PROCESS_MARKER + " " + d );
+                    }
+                } 
             }
         }
     }
@@ -360,11 +358,10 @@ public class DefaultRepositoryCopier
 
         existing.merge( staged );
 
-        Writer writer = new FileWriter( existingMetadata );
-
-        this.writer.write( writer, existing );
-
-        writer.close();
+        try (Writer writer = new FileWriter( existingMetadata )) {
+            this.writer.write( writer, existing );
+        }
+        
         stagedMetadataReader.close();
         existingMetadataReader.close();
 
@@ -405,20 +402,18 @@ public class DefaultRepositoryCopier
     {
         MessageDigest md5 = MessageDigest.getInstance( type );
 
-        InputStream is = new FileInputStream( file );
+        try (InputStream is = new FileInputStream( file )) {
+            // CHECKSTYLE_OFF: MagicNumber
+            byte[] buf = new byte[8192];
+            // CHECKSTYLE_ON: MagicNumber
 
-        // CHECKSTYLE_OFF: MagicNumber
-        byte[] buf = new byte[8192];
-        // CHECKSTYLE_ON: MagicNumber
+            int i;
 
-        int i;
-
-        while ( ( i = is.read( buf ) ) >= 0 )
-        {
-            md5.update( buf, 0, i );
+            while ( ( i = is.read( buf ) ) >= 0 )
+            {
+                md5.update( buf, 0, i );
+            }
         }
-
-        is.close();
 
         return encode( md5.digest() );
     }
