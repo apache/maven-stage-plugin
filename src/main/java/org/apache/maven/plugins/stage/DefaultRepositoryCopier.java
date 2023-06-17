@@ -19,6 +19,7 @@ package org.apache.maven.plugins.stage;
  * under the License.
  */
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.maven.artifact.manager.WagonManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
@@ -41,7 +42,6 @@ import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.LogEnabled;
 import org.codehaus.plexus.logging.Logger;
-import org.codehaus.plexus.util.FileUtils;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
@@ -128,7 +128,7 @@ public class DefaultRepositoryCopier
 
             File f = new File( basedir, s );
 
-            FileUtils.mkdir( f.getParentFile().getAbsolutePath() );
+            FileUtils.forceMkdirParent( f );
 
             logger.info( "Downloading file from the source repository: " + s );
 
@@ -375,7 +375,7 @@ public class DefaultRepositoryCopier
         {
             File newMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" + IN_PROCESS_MARKER );
 
-            FileUtils.fileWrite( newMd5.getAbsolutePath(), checksum( existingMetadata, MD5 ) );
+            FileUtils.writeStringToFile( newMd5, checksum( existingMetadata, MD5 ) );
 
             File oldMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" );
 
@@ -383,7 +383,7 @@ public class DefaultRepositoryCopier
 
             File newSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" + IN_PROCESS_MARKER );
 
-            FileUtils.fileWrite( newSha1.getAbsolutePath(), checksum( existingMetadata, SHA1 ) );
+            FileUtils.writeStringToFile( newSha1, checksum( existingMetadata, SHA1 ) );
 
             File oldSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" );
 
