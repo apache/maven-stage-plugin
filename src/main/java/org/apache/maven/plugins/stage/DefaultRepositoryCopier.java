@@ -19,6 +19,8 @@ package org.apache.maven.plugins.stage;
  * under the License.
  */
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.maven.artifact.manager.WagonManager;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.repository.metadata.Metadata;
@@ -40,8 +42,6 @@ import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.LogEnabled;
 import org.codehaus.plexus.logging.Logger;
-import org.codehaus.plexus.util.FileUtils;
-import org.codehaus.plexus.util.IOUtil;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 
 import java.io.File;
@@ -128,7 +128,7 @@ public class DefaultRepositoryCopier
 
             File f = new File( basedir, s );
 
-            FileUtils.mkdir( f.getParentFile().getAbsolutePath() );
+            FileUtils.forceMkdirParent( f );
 
             logger.info( "Downloading file from the source repository: " + s );
 
@@ -231,7 +231,7 @@ public class DefaultRepositoryCopier
 
         InputStream is = new FileInputStream( renameScript );
 
-        IOUtil.copy( is, zos );
+        IOUtils.copy( is, zos );
 
         zos.close();
         is.close();
@@ -306,35 +306,34 @@ public class DefaultRepositoryCopier
             }
             else
             {
-                InputStream is = new FileInputStream( f );
-
-                String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
-                s = s.replace( '\\', '/' );
-
-                // We are marking any version directories with the in-process flag so that
-                // anything being unpacked on the target side will not be recognized by Maven
-                // and so users cannot download partially uploaded files.
-
-                String vtag = "/" + version;
-
-                s = s.replace( vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
-
-                ZipEntry e = new ZipEntry( s );
-
-                zos.putNextEntry( e );
-
-                IOUtil.copy( is, zos );
-
-                is.close();
-
-                int idx = s.indexOf( IN_PROCESS_MARKER );
-
-                if ( idx > 0 )
+                try ( InputStream is = new FileInputStream( f ) )
                 {
-                    String d = s.substring( 0, idx );
+                    String s = f.getAbsolutePath().substring( basedir.getAbsolutePath().length() + 1 );
+                    s = s.replace( '\\', '/' );
 
-                    moveCommands.add( "mv " + d + IN_PROCESS_MARKER + " " + d );
-                }
+                    // We are marking any version directories with the in-process flag so that
+                    // anything being unpacked on the target side will not be recognized by Maven
+                    // and so users cannot download partially uploaded files.
+
+                    String vtag = "/" + version;
+
+                    s = s.replace( vtag + "/", vtag + IN_PROCESS_MARKER + "/" );
+
+                    ZipEntry e = new ZipEntry( s );
+
+                    zos.putNextEntry( e );
+
+                    IOUtils.copy( is, zos );
+
+                    int idx = s.indexOf( IN_PROCESS_MARKER );
+
+                    if ( idx > 0 )
+                    {
+                        String d = s.substring( 0, idx );
+
+                        moveCommands.add( "mv " + d + IN_PROCESS_MARKER + " " + d );
+                    }
+                } 
             }
         }
     }
@@ -360,11 +359,11 @@ public class DefaultRepositoryCopier
 
         existing.merge( staged );
 
-        Writer writer = new FileWriter( existingMetadata );
-
-        this.writer.write( writer, existing );
-
-        writer.close();
+        try ( Writer writer = new FileWriter( existingMetadata ) )
+        {
+            this.writer.write( writer, existing );
+        }
+        
         stagedMetadataReader.close();
         existingMetadataReader.close();
 
@@ -376,7 +375,7 @@ public class DefaultRepositoryCopier
         {
             File newMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" + IN_PROCESS_MARKER );
 
-            FileUtils.fileWrite( newMd5.getAbsolutePath(), checksum( existingMetadata, MD5 ) );
+            FileUtils.writeStringToFile( newMd5, checksum( existingMetadata, MD5 ) );
 
             File oldMd5 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".md5" );
 
@@ -384,7 +383,7 @@ public class DefaultRepositoryCopier
 
             File newSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" + IN_PROCESS_MARKER );
 
-            FileUtils.fileWrite( newSha1.getAbsolutePath(), checksum( existingMetadata, SHA1 ) );
+            FileUtils.writeStringToFile( newSha1, checksum( existingMetadata, SHA1 ) );
 
             File oldSha1 = new File( existingMetadata.getParentFile(), MAVEN_METADATA + ".sha1" );
 
@@ -405,20 +404,19 @@ public class DefaultRepositoryCopier
     {
         MessageDigest md5 = MessageDigest.getInstance( type );
 
-        InputStream is = new FileInputStream( file );
-
-        // CHECKSTYLE_OFF: MagicNumber
-        byte[] buf = new byte[8192];
-        // CHECKSTYLE_ON: MagicNumber
-
-        int i;
-
-        while ( ( i = is.read( buf ) ) >= 0 )
+        try ( InputStream is = new FileInputStream( file ) )
         {
-            md5.update( buf, 0, i );
-        }
+            // CHECKSTYLE_OFF: MagicNumber
+            byte[] buf = new byte[8192];
+            // CHECKSTYLE_ON: MagicNumber
 
-        is.close();
+            int i;
+
+            while ( ( i = is.read( buf ) ) >= 0 )
+            {
+                md5.update( buf, 0, i );
+            }
+        }
 
         return encode( md5.digest() );
     }
