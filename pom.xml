@@ -49,7 +49,7 @@ under the License.
   </issueManagement>
   <ciManagement>
     <system>Jenkins</system>
-    <url>https://ci-builds.apache.org/job/Maven/job/maven-box/job/maven-stage-plugin/</url>
+    <url>https://ci-maven.apache.org/job/Maven/job/maven-box/job/maven-stage-plugin/</url>
   </ciManagement>
   <distributionManagement>
     <site>
@@ -59,8 +59,8 @@ under the License.
   </distributionManagement>
 
   <properties>
-    <wagonVersion>3.5.1</wagonVersion>
-    <mavenVersion>3.2.5</mavenVersion>
+    <mavenVersion>3.6.3</mavenVersion>
+    <wagonVersion>3.3.4</wagonVersion>
     <javaVersion>8</javaVersion>
     <project.build.outputTimestamp>2020-04-07T21:04:00Z</project.build.outputTimestamp>
   </properties>
@@ -119,7 +119,6 @@ under the License.
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-utils</artifactId>
-      <version>3.3.0</version>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
