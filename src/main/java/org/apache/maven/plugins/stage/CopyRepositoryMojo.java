@@ -1,5 +1,3 @@
-package org.apache.maven.plugins.stage;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,6 +16,9 @@ package org.apache.maven.plugins.stage;
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.maven.plugins.stage;
+
+import java.io.IOException;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -27,21 +28,17 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.wagon.WagonException;
 import org.apache.maven.wagon.repository.Repository;
 
-import java.io.IOException;
-
 /**
  * Copies artifacts from one repository to another repository.
- * 
+ *
  * @author Jason van Zyl
  */
-@Mojo( name = "copy", requiresProject = false )
-public class CopyRepositoryMojo
-    extends AbstractMojo
-{
+@Mojo(name = "copy", requiresProject = false)
+public class CopyRepositoryMojo extends AbstractMojo {
     /**
      * The URL to the source repository.
      */
-    @Parameter( property = "source" )
+    @Parameter(property = "source")
     private String source;
 
     /**
@@ -52,19 +49,19 @@ public class CopyRepositoryMojo
      * as a target URL.
      * </p>
      */
-    @Parameter( property = "target" )
+    @Parameter(property = "target")
     private String target;
 
     /**
      * The id of the source repository, required if you need the configuration from the user settings.
      */
-    @Parameter( property = "sourceRepositoryId", defaultValue = "source" )
+    @Parameter(property = "sourceRepositoryId", defaultValue = "source")
     private String sourceRepositoryId;
 
     /**
      * The id of the target repository, required if you need the configuration from the user settings.
      */
-    @Parameter( property = "targetRepositoryId", defaultValue = "target" )
+    @Parameter(property = "targetRepositoryId", defaultValue = "target")
     private String targetRepositoryId;
 
     /**
@@ -74,7 +71,7 @@ public class CopyRepositoryMojo
      * <i>All</i> versions of the artifacts will be copied.
      * </p>
      */
-    @Parameter( property = "version", required = true )
+    @Parameter(property = "version", required = true)
     private String version;
 
     /**
@@ -83,25 +80,15 @@ public class CopyRepositoryMojo
     @Component
     private RepositoryCopier copier;
 
-    public void execute()
-        throws MojoExecutionException
-    {
-        try
-        {
-            Repository sourceRepository = new Repository( sourceRepositoryId, source );
-            Repository targetRepository = new Repository( targetRepositoryId, target );
-            copier.copy( sourceRepository, targetRepository, version );
-        }
-        catch ( IOException e )
-        {
-            throw new MojoExecutionException(
-                "Error copying repository from " + source + " to " + target, e );
-        }
-        catch ( WagonException e )
-        {
-            throw new MojoExecutionException(
-                "Error copying repository from " + source + " to " + target, e );
+    public void execute() throws MojoExecutionException {
+        try {
+            Repository sourceRepository = new Repository(sourceRepositoryId, source);
+            Repository targetRepository = new Repository(targetRepositoryId, target);
+            copier.copy(sourceRepository, targetRepository, version);
+        } catch (IOException e) {
+            throw new MojoExecutionException("Error copying repository from " + source + " to " + target, e);
+        } catch (WagonException e) {
+            throw new MojoExecutionException("Error copying repository from " + source + " to " + target, e);
         }
     }
 }
-

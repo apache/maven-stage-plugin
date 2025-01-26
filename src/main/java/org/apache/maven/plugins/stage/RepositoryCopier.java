@@ -1,5 +1,3 @@
-package org.apache.maven.plugins.stage;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -18,17 +16,17 @@ package org.apache.maven.plugins.stage;
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.maven.plugins.stage;
+
+import java.io.IOException;
 
 import org.apache.maven.wagon.WagonException;
 import org.apache.maven.wagon.repository.Repository;
 
-import java.io.IOException;
-
 /**
  * @author Jason van Zyl
  */
-public interface RepositoryCopier
-{
+public interface RepositoryCopier {
     String ROLE = RepositoryCopier.class.getName();
 
     String IN_PROCESS_MARKER = ".rip";
@@ -39,6 +37,6 @@ public interface RepositoryCopier
 
     String MAVEN_METADATA = "maven-metadata.xml";
 
-    void copy( Repository sourceRepository, Repository targetRepository, String version )
-        throws WagonException, IOException;
+    void copy(Repository sourceRepository, Repository targetRepository, String version)
+            throws WagonException, IOException;
 }
