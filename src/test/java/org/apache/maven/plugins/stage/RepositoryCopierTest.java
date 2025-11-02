@@ -31,6 +31,10 @@ import org.apache.maven.artifact.repository.metadata.io.xpp3.MetadataXpp3Reader;
 import org.apache.maven.wagon.repository.Repository;
 import org.codehaus.plexus.PlexusTestCase;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** @author Jason van Zyl */
 public class RepositoryCopierTest extends PlexusTestCase {
@@ -38,6 +42,7 @@ public class RepositoryCopierTest extends PlexusTestCase {
 
     private MetadataXpp3Reader reader = new MetadataXpp3Reader();
 
+    @Test
     public void testCopy() throws Exception {
         RepositoryCopier copier = (RepositoryCopier) lookup(RepositoryCopier.ROLE);
 
@@ -91,6 +96,7 @@ public class RepositoryCopierTest extends PlexusTestCase {
         // Test new artifacts are present
     }
 
+    @Test
     private void testMavenArtifact(File repo, String artifact) throws IOException, XmlPullParserException {
         File basedir = new File(repo, "org/apache/maven/" + artifact);
 
