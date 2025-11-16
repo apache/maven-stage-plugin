@@ -23,7 +23,7 @@ under the License.
   <parent>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-plugins</artifactId>
-    <version>43</version>
+    <version>45</version>
   </parent>
 
   <artifactId>maven-stage-plugin</artifactId>
@@ -93,6 +93,7 @@ under the License.
     <dependency>
       <groupId>org.apache.maven.plugin-tools</groupId>
       <artifactId>maven-plugin-annotations</artifactId>
+      <version>${version.maven-plugin-tools}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
@@ -113,6 +114,10 @@ under the License.
     <dependency>
       <groupId>org.codehaus.plexus</groupId>
       <artifactId>plexus-utils</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.plexus</groupId>
+      <artifactId>plexus-xml</artifactId>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
