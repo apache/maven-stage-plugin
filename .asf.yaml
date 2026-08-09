@@ -17,7 +17,6 @@
 # see https://s.apache.org/asfyaml
 github:
   description: "Apache Maven Stage Plugin (RETIRED)"
-  homepage: https://maven.apache.org/plugins/maven-stage-plugin/
   labels:
     - java
     - build-management
@@ -32,8 +31,6 @@ github:
     squash: true
     merge: false
     rebase: true
-  autolink_jira:
-    - MSTAGE
   features:
     issues: true
 notifications:
